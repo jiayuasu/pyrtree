@@ -8,12 +8,12 @@ import math, random, sys
 import time
 import array
 
-from rect import Rect, union_all, NullRect
+from .rect import Rect, union_all, NullRect
 
 class RTree(object):
     def __init__(self):
         self.count = 0
-        self.stats = {
+        self.stats = { 
             "overflow_f" : 0,
             "avg_overflow_t_f" : 0.0,
             "longest_overflow" : 0.0,
@@ -33,7 +33,7 @@ class RTree(object):
         self.leaf_count = 0
         self.rect_pool = array.array('d')
         self.node_pool = array.array('L')
-        self.leaf_pool = [] # leaf objects.
+        self.leaf_pool = [] # leaf objects. 
 
         self.cursor = _NodeCursor.create(self, NullRect)
 
@@ -58,7 +58,7 @@ class _NodeCursor(object):
     def create(cls, rooto, rect):
         idx = rooto.count
         rooto.count += 1
-
+        
         rooto._ensure_pool(idx + 1)
         #rooto.node_pool.extend([0,0])
         #rooto.rect_pool.extend([0,0,0,0])
@@ -122,14 +122,14 @@ class _NodeCursor(object):
     def query_point(self,point):
         """ Query by a point """
         def p(o,x): return o.rect.does_containpoint(point)
-
+            
         for rr in self.walk(p):
             yield rr
 
     def lift(self):
         return _NodeCursor(self.root,
                            self.index,
-                           self.rect,
+                           self.rect, 
                            self.first_child,
                            self.next_sibling)
 
@@ -142,7 +142,7 @@ class _NodeCursor(object):
         xx = rp[recti+2]
         yy = rp[recti+3]
 
-        if (x == 0.0 and y == 0.0 and xx == 0.0 and yy == 0.0):
+        if (x == 0.0 and y == 0.0 and xx == 0.0 and yy == 0.0): 
             self.rect = NullRect
         else:
             self.rect = Rect(x,y,xx,yy)
@@ -161,7 +161,7 @@ class _NodeCursor(object):
         if 0 == self.first_child: return True
         else:
             return self.has_children() and self.get_first_child().is_leaf()
-
+    
     def get_first_child(self):
         fc = self.first_child
         c = _NodeCursor(self.root,0,NullRect,0,0)
@@ -179,7 +179,7 @@ class _NodeCursor(object):
 
         if self.rect is not NullRect:
             self.rect.write_raw_coords(rp, recti)
-        else:
+        else: 
             rp[recti] = 0
             rp[recti+1] = 0
             rp[recti+2] = 0
@@ -187,7 +187,7 @@ class _NodeCursor(object):
 
         self.npool[nodei] = self.next_sibling
         self.npool[nodei + 1] = self.first_child
-
+    
     def nchildren(self):
         i = self.index
         c = 0
@@ -204,14 +204,14 @@ class _NodeCursor(object):
                 self._insert_child(_NodeCursor.create_leaf(self.root,leafo,leafrect))
 
                 self._balance()
-
+                
                 # done: become the original again
                 self._become(index)
                 return
             else:
                 # Not holding leaves, move down a level in the tree:
 
-                # Micro-optimization:
+                # Micro-optimization: 
                 #  inlining union() calls -- logic is:
                 # ignored,child = min([ ((c.rect.union(leafrect)).area() - c.rect.area(),c.index) for c in self.children() ])
                 child = None
@@ -232,14 +232,14 @@ class _NodeCursor(object):
                 self.rect = self.rect.union(leafrect)
                 self._save_back()
                 self._become(child) # recurse.
-
+            
     def _balance(self):
         if (self.nchildren() <= MAXCHILDREN):
             return
 
 
-        t = time.time()
-
+        t = time.process_time()
+        
         cur_score = -10
 
         s_children = [ c.lift() for c in self.children() ]
@@ -247,36 +247,28 @@ class _NodeCursor(object):
         memo = {}
 
         clusterings = [ k_means_cluster(self.root,k,s_children) for k in range(2,MAX_KMEANS) ]
-        #score,bestcluster = max( [ (silhouette_coeff(c,memo),c) for c in clusterings ])
-        #max function doesn't work
-        for c in range(len(clusterings)):
-            s_coeff = 0
-            max_s_coeff = 0
-            if silhouette_coeff(clusterings[c],memo) > s_coeff:
-                s_coeff = silhouette_coeff(clusterings[c],memo)
-                max_s_coeff = c
-        bestcluster = clusterings[max_s_coeff]
+        bestcluster = max([c for c in clusterings], key=lambda c: silhouette_coeff(c, memo))
 
         nodes = [ _NodeCursor.create_with_children(c,self.root) for c in bestcluster if len(c) > 0]
 
         self._set_children(nodes)
-
-        dur = (time.time() - t)
-        c = float(self.root.stats["overflow_f"])
+        
+        dur = (time.process_time() - t)
+        c = float(self.root.stats["overflow_f"]) 
         oa = self.root.stats["avg_overflow_t_f"]
         self.root.stats["avg_overflow_t_f"] = (dur / (c + 1.0)) + (c * oa / (c + 1.0))
         self.root.stats["overflow_f"] += 1
         self.root.stats["longest_overflow"] = max(self.root.stats["longest_overflow"], dur)
-
+            
     def _set_children(self, cs):
         self.first_child = 0
 
-        if 0 == len(cs):
+        if 0 == len(cs): 
             return
 
         pred = None
         for c in cs:
-            if pred is not None:
+            if pred is not None: 
                 pred.next_sibling = c.index
                 pred._save_back()
             if 0 == self.first_child:
@@ -291,7 +283,7 @@ class _NodeCursor(object):
         self.first_child = c.index
         c._save_back()
         self._save_back()
-
+        
 
     def children(self):
         if (0 == self.first_child): return
@@ -322,14 +314,14 @@ def avg_diagonals(node, onodes, memo_tab):
     for onode in onodes:
         k1 = (nidx,onode.index)
         k2 = (onode.index,nidx)
-        if k1 in memo_tab:
+        if k1 in memo_tab: 
             diag = memo_tab[k1]
         elif k2 in memo_tab:
             diag = memo_tab[k2]
         else:
             diag = node.rect.union(onode.rect).diagonal()
             memo_tab[k1] = diag
-
+        
         sv += diag
 
     return sv / len(onodes)
@@ -378,9 +370,9 @@ def closest(centroids, node):
 
 
 def k_means_cluster(root, k, nodes):
-    t = time.time()
+    t = time.process_time()
     if len(nodes) <= k: return [ [n] for n in nodes ]
-
+    
     ns = list(nodes)
     root.stats["count_kmeans_iter_f"] += 1
 
@@ -389,17 +381,17 @@ def k_means_cluster(root, k, nodes):
 
     cluster_starts = ns[:k]
     cluster_centers = [ center_of_gravity([n]) for n in ns[:k] ]
-
-
+    
+    
     # Loop until stable:
     while True:
         root.stats["sum_kmeans_iter_f"] += 1
         clusters = [ [] for c in cluster_centers ]
-
-        for n in ns:
+        
+        for n in ns: 
             idx = closest(cluster_centers, n)
             clusters[idx].append(n)
-
+        
         #FIXME HACK TODO: is it okay for there to be empty clusters?
         clusters = [ c for c in clusters if len(c) > 0 ]
 
@@ -410,16 +402,16 @@ def k_means_cluster(root, k, nodes):
                                                               repr(cluster_centers)))
 
             assert(len(c) > 0)
-
+            
         rest = ns
         first = False
 
         new_cluster_centers = [ center_of_gravity(c) for c in clusters ]
-        if new_cluster_centers == cluster_centers :
+        if new_cluster_centers == cluster_centers : 
             root.stats["avg_kmeans_iter_f"] = float(root.stats["sum_kmeans_iter_f"] / root.stats["count_kmeans_iter_f"])
-            root.stats["longest_kmeans"] = max(root.stats["longest_kmeans"], (time.time() - t))
+            root.stats["longest_kmeans"] = max(root.stats["longest_kmeans"], (time.process_time() - t))
             return clusters
         else: cluster_centers = new_cluster_centers
-
-
-
+        
+    
+    
