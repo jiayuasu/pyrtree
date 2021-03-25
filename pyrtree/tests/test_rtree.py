@@ -1,4 +1,6 @@
 # FIXME: path hackery.
+from pyrtree.rect import NullRect
+
 if __name__ == "__main__":
     import sys, os
     mypath = os.path.dirname(sys.argv[0])
@@ -10,7 +12,12 @@ from pyrtree import Rect, RTree
 import collections
 import unittest as ut
 import random, math
-from testutil import *
+
+def take(n,f,*args,**kwargs):
+    i = 0
+    while i < n:
+        yield f(*args,**kwargs)
+        i = i + 1
 
 def rr():
     return random.uniform(0.0,10.0)
