@@ -52,6 +52,8 @@ class RTree(object):
         for x in self.cursor.query_point(p): yield x
     def walk(self,pred):
         return self.cursor.walk(pred)
+    def get_last_level(self):
+        return self.cursor.get_last_level()
 
 class _NodeCursor(object):
     @classmethod
@@ -113,6 +115,21 @@ class _NodeCursor(object):
                     for cr in c.walk(predicate):
                         yield cr
 
+    def get_last_level(self):
+        nodes = []
+        for c in self.children():
+            if c.is_leaf():
+                nodes.append(c.leaf_obj())
+            else:
+                list_of_leaf = c.get_last_level()
+                # Make sure the result is a list of leaf nodes, not nested
+                if not isinstance(list_of_leaf[0][0], list):
+                    nodes.append(list_of_leaf)
+                else:
+                    # If the result is nested, flatten the list
+                    for leaves in list_of_leaf:
+                        nodes.append(leaves)
+        return nodes
     def query_rect(self, r):
         """ Return things that intersect with 'r'. """
         def p(o,x): return r.does_intersect(o.rect)
